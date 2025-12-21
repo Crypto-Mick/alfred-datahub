@@ -1,10 +1,10 @@
 from datetime import datetime, timedelta
 
-from tg_reader import read_messages
-from matcher import match
-from extractor import extract
-from storage import save
-from notifier import notify
+from src.tg_reader import read_messages
+from src.matcher import match
+from src.extractor import extract
+from src.storage import save
+from src.notifier import notify
 
 
 def main() -> None:
