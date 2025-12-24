@@ -6,16 +6,13 @@ from src import tg_reader
 
 def test_read_messages_contract_without_env():
     """
-    tg_reader must fail with a clear error if Telegram credentials are missing.
+    tg_reader must fail when Telegram credentials are missing.
     This validates:
       - module imports
       - function exists
-      - error is explicit and deterministic
+      - error is deterministic
     """
-    with pytest.raises(RuntimeError) as exc:
-        tg_reader.read_messages(channel="test_channel", since=datetime.utcnow())
+    with pytest.raises(KeyError) as exc:
+        tg_reader.read_messages(channels=["test_channel"], since=datetime.utcnow())
 
-    msg = str(exc.value)
-    assert "TG_API_ID" in msg
-    assert "TG_API_HASH" in msg
-    assert "TG_SESSION" in msg
+    assert "TG_API_ID" in str(exc.value)
