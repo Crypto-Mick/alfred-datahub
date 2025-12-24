@@ -2,10 +2,11 @@ from typing import List, Dict
 from datetime import datetime
 import os
 
-from telethon import TelegramClient
+from telethon.sync import TelegramClient
 from telethon.tl.functions.messages import GetHistoryRequest
 
 
+# Абсолютный путь к файловой сессии (без .session)
 SESSION_PATH = "/home/micklib/smart-parser/alfred_test"
 
 
@@ -46,35 +47,32 @@ def read_messages(
     results: List[Dict] = []
 
     client = _get_client()
-    client.connect()
 
-    if not client.is_user_authorized():
-        raise RuntimeError("Telegram client is not authorized (session invalid)")
-
-    for channel in channels:
-        history = client(
-            GetHistoryRequest(
-                peer=channel,
-                offset_id=0,
-                offset_date=until,
-                add_offset=0,
-                limit=limit_per_channel,
-                max_id=0,
-                min_id=0,
-                hash=0,
+    # sync-режим: with client сам управляет loop/connect/disconnect
+    with client:
+        for channel in channels:
+            history = client(
+                GetHistoryRequest(
+                    peer=channel,
+                    offset_id=0,
+                    offset_date=until,
+                    add_offset=0,
+                    limit=limit_per_channel,
+                    max_id=0,
+                    min_id=0,
+                    hash=0,
+                )
             )
-        )
 
-        for msg in history.messages:
-            if not msg.date or msg.date < since:
-                continue
+            for msg in history.messages:
+                if not msg.date or msg.date < since:
+                    continue
 
-            results.append({
-                "id": msg.id,
-                "date": msg.date,
-                "text": msg.message or "",
-                "url": f"https://t.me/{channel.lstrip('@')}/{msg.id}",
-            })
+                results.append({
+                    "id": msg.id,
+                    "date": msg.date,
+                    "text": msg.message or "",
+                    "url": f"https://t.me/{channel.lstrip('@')}/{msg.id}",
+                })
 
-    client.disconnect()
     return results
