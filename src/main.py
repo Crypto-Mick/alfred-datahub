@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 from src.tg_reader import read_messages
 from src.matcher import match
 from src.extractor import extract
-from src.storage import save_raw, save_result
+from src.storage import save
 from src.notifier import notify
 from src.status import StatusWriter
 
@@ -33,11 +33,10 @@ def main():
             limit_per_channel=100,
         )
 
-        save_raw(messages)
-
+        
         matched = match(messages)
         extracted = extract(matched)
-        save_result(extracted)
+        save(extracted, output_dir="output")
 
         notify({
             "messages_read": len(messages),
