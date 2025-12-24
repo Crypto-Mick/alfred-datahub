@@ -3,16 +3,21 @@ from datetime import datetime
 import os
 
 from telethon import TelegramClient
-from telethon.sessions import StringSession
 from telethon.tl.functions.messages import GetHistoryRequest
+
+
+SESSION_PATH = "/home/micklib/smart-parser/alfred_test"
 
 
 def _get_client() -> TelegramClient:
     api_id = int(os.environ["TG_API_ID"])
     api_hash = os.environ["TG_API_HASH"]
-    session = os.environ["TG_SESSION"]
 
-    return TelegramClient(StringSession(session), api_id, api_hash)
+    return TelegramClient(
+        SESSION_PATH,
+        api_id,
+        api_hash,
+    )
 
 
 def read_messages(
@@ -41,7 +46,10 @@ def read_messages(
     results: List[Dict] = []
 
     client = _get_client()
-    client.start()
+    client.connect()
+
+    if not client.is_user_authorized():
+        raise RuntimeError("Telegram client is not authorized (session invalid)")
 
     for channel in channels:
         history = client(
