@@ -1,74 +1,58 @@
-from pathlib import Path
+import os
+from datetime import datetime, timedelta, timezone
 
 from src.tg_reader import read_messages
 from src.matcher import match
 from src.extractor import extract
-from src.storage import save
+from src.storage import save_raw, save_result
 from src.notifier import notify
-from src.status import init_idle_status, mark_running, mark_done, mark_error
+from src.status import StatusWriter
 
 
-OUTPUT_DIR = Path(__file__).resolve().parent.parent / "output"
-RESULT_MD = OUTPUT_DIR / "result.md"
+def _get_channels_from_env() -> list[str]:
+    raw = os.environ.get("TG_CHANNELS", "")
+    return [c.strip() for c in raw.split(",") if c.strip()]
 
 
-def main() -> None:
-    # ensure idle status exists before run
-    init_idle_status(result_path=str(RESULT_MD))
-
-    started_at = None
-    stats = {
-        "messages_read": 0,
-        "matched": 0,
-        "snippets": 0,
-    }
+def main():
+    status = StatusWriter()
+    status.start()
 
     try:
-        started_at = mark_running(result_path=str(RESULT_MD))
+        channels = _get_channels_from_env()
+        if not channels:
+            raise RuntimeError("TG_CHANNELS is empty or not set")
 
-        # === pipeline ===
+        now = datetime.now(timezone.utc)
+        since = now - timedelta(hours=24)
+
         messages = read_messages(
-            channel="stub",
-            since=None,
-        )
-        stats["messages_read"] = len(messages)
-
-        matched = match(
-            messages=messages,
-            keywords=["Funding Rate", "Open Interest"],
-        )
-        stats["matched"] = len(matched)
-
-        snippets = extract(
-            messages=matched,
-            keywords=["Funding Rate", "Open Interest"],
-        )
-        stats["snippets"] = len(snippets)
-
-        save(
-            snippets=snippets,
-            output_dir=str(OUTPUT_DIR),
+            channels=channels,
+            since=since,
+            until=None,
+            limit_per_channel=100,
         )
 
-        notify(
-            task_name="alfred-datahub-manual",
-            output_dir=str(OUTPUT_DIR),
-            stats=stats,
-        )
+        save_raw(messages)
 
-        mark_done(
-            started_at=started_at,
-            stats=stats,
-            result_path=str(RESULT_MD),
-        )
+        matched = match(messages)
+        extracted = extract(matched)
+        save_result(extracted)
+
+        notify({
+            "messages_read": len(messages),
+            "matched": len(matched),
+            "snippets": len(extracted),
+        })
+
+        status.done({
+            "messages_read": len(messages),
+            "matched": len(matched),
+            "snippets": len(extracted),
+        })
 
     except Exception as e:
-        mark_error(
-            started_at=started_at,
-            stats=stats,
-            error=str(e),
-            result_path=str(RESULT_MD),
-        )
+        status.error(str(e))
         raise
 
 
