@@ -5,8 +5,7 @@ from src.tg_reader import read_messages
 from src.matcher import match
 from src.extractor import extract
 from src.storage import save
-from src.notifier import notify
-from src.status import StatusWriter
+from src.status import mark_running, mark_done, mark_error
 
 
 def _get_channels_from_env() -> list[str]:
@@ -15,13 +14,15 @@ def _get_channels_from_env() -> list[str]:
 
 
 def main():
-    status = StatusWriter()
-    status.start()
+    started_at = None
+    result_path = "output/result.md"
 
     try:
         channels = _get_channels_from_env()
         if not channels:
             raise RuntimeError("TG_CHANNELS is empty or not set")
+
+        started_at = mark_running(result_path=result_path)
 
         now = datetime.now(timezone.utc)
         since = now - timedelta(hours=24)
@@ -33,25 +34,28 @@ def main():
             limit_per_channel=100,
         )
 
-        
         matched = match(messages)
         extracted = extract(matched)
+
         save(extracted, output_dir="output")
 
-        notify({
-            "messages_read": len(messages),
-            "matched": len(matched),
-            "snippets": len(extracted),
-        })
-
-        status.done({
-            "messages_read": len(messages),
-            "matched": len(matched),
-            "snippets": len(extracted),
-        })
+        mark_done(
+            started_at=started_at,
+            stats={
+                "messages_read": len(messages),
+                "matched": len(matched),
+                "snippets": len(extracted),
+            },
+            result_path=result_path,
+        )
 
     except Exception as e:
-        status.error(str(e))
+        mark_error(
+            started_at=started_at,
+            stats={},
+            error=str(e),
+            result_path=result_path,
+        )
         raise
 
 
