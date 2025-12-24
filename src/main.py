@@ -13,6 +13,11 @@ def _get_channels_from_env() -> list[str]:
     return [c.strip() for c in raw.split(",") if c.strip()]
 
 
+def _get_keywords_from_env() -> list[str]:
+    raw = os.environ.get("KEYWORDS", "")
+    return [k.strip() for k in raw.split(",") if k.strip()]
+
+
 def main():
     started_at = None
     result_path = "output/result.md"
@@ -21,6 +26,8 @@ def main():
         channels = _get_channels_from_env()
         if not channels:
             raise RuntimeError("TG_CHANNELS is empty or not set")
+
+        keywords = _get_keywords_from_env()
 
         started_at = mark_running(result_path=result_path)
 
@@ -34,7 +41,7 @@ def main():
             limit_per_channel=100,
         )
 
-        matched = match(messages)
+        matched = match(messages, keywords)
         extracted = extract(matched)
 
         save(extracted, output_dir="output")
