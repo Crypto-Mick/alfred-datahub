@@ -42,7 +42,7 @@ def main():
         )
 
         matched = match(messages, keywords)
-        extracted = extract(matched)
+        extracted = extract(matched, keywords)
 
         save(extracted, output_dir="output")
 
