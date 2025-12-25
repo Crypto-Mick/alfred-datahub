@@ -10,6 +10,20 @@ def _now_iso() -> str:
     return datetime.utcnow().isoformat() + "Z"
 
 
+def _json_safe(value):
+    """
+    Recursively convert values to JSON-serializable types.
+    This protects status.json from datetime and other non-JSON objects.
+    """
+    if isinstance(value, dict):
+        return {k: _json_safe(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_json_safe(v) for v in value]
+    if isinstance(value, datetime):
+        return value.isoformat() + "Z"
+    return value
+
+
 def write_status(
     *,
     state: str,
@@ -36,7 +50,7 @@ def write_status(
     }
 
     with open(STATUS_FILE, "w", encoding="utf-8") as f:
-        json.dump(payload, f, ensure_ascii=False, indent=2)
+        json.dump(_json_safe(payload), f, ensure_ascii=False, indent=2)
 
 
 def init_idle_status(result_path: Optional[str] = None) -> None:
