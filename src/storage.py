@@ -5,6 +5,19 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 
+def _json_safe(value):
+    """
+    Recursively convert values to JSON-serializable types.
+    """
+    if isinstance(value, dict):
+        return {k: _json_safe(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_json_safe(v) for v in value]
+    if isinstance(value, datetime):
+        return value.isoformat() + "Z"
+    return value
+
+
 def _get_field(item: dict, key: str) -> str:
     value = item.get(key, "")
     return "" if value is None else str(value)
@@ -33,11 +46,13 @@ def save(
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
 
+    # --- raw.json (machine-readable, JSON-safe) ---
     (output_path / "raw.json").write_text(
-        json.dumps(snippets, ensure_ascii=False),
+        json.dumps(_json_safe(snippets), ensure_ascii=False, indent=2),
         encoding="utf-8",
     )
 
+    # --- result.md (human-readable) ---
     generated_at = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M")
 
     lines: list[str] = [
