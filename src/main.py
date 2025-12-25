@@ -5,32 +5,23 @@ import yaml
 
 from src.extractor import extract
 from src.matcher import match
-from src.status import mark_done, mark_error, mark_running
+from src.status import mark_done, mark_error, mark_running, write_task_snapshot
 from src.storage import save
 from src.tg_reader import read_messages
+from src.validation import validate_task_yaml_v1, TaskYamlError
 
 
-def _load_config(path: Path) -> dict:
+def _load_yaml(path: Path) -> dict:
     if not path.exists():
         raise RuntimeError(f"Missing config file: {path}")
 
     with path.open("r", encoding="utf-8") as f:
-        config = yaml.safe_load(f)
+        data = yaml.safe_load(f)
 
-    if not isinstance(config, dict):
-        raise RuntimeError("Invalid config: root must be a mapping")
+    if not isinstance(data, dict):
+        raise RuntimeError("Invalid YAML: root must be a mapping")
 
-    try:
-        _ = config["version"]
-        _ = config["task"]["name"]
-        _ = config["time"]["lookback_hours"]
-        _ = config["sources"]["telegram"]["channels"]
-        _ = config["filters"]["include_keywords"]
-        _ = config["output"]["max_items"]
-    except KeyError as e:
-        raise RuntimeError(f"Missing required config field: {e}")
-
-    return config
+    return data
 
 
 def main() -> None:
@@ -38,24 +29,42 @@ def main() -> None:
     result_path = "output/result.md"
 
     try:
+        # --- load + validate config (gate) ---
         config_path = Path(__file__).resolve().parents[1] / "config" / "task.yaml"
-        config = _load_config(config_path)
+        raw_cfg = _load_yaml(config_path)
 
-        channels = config["sources"]["telegram"]["channels"]
-        keywords = config["filters"]["include_keywords"]
-        lookback_hours = config["time"]["lookback_hours"]
-        limit_per_channel = config["sources"]["telegram"].get("limit_per_channel", 200)
-        max_items = config["output"]["max_items"]
+        cfg = validate_task_yaml_v1(raw_cfg)
 
+        # --- unpack validated config ---
+        channels = cfg["sources"]["telegram"]["channels"]
+        keywords = cfg["filters"]["include_keywords"]
+        lookback_hours = cfg["time"]["lookback_hours"]
+        limit_per_channel = cfg["sources"]["telegram"]["limit_per_channel"]
+        max_items = cfg["output"]["max_items"]
+
+        # --- mark running ---
         started_at = mark_running(result_path=result_path)
 
+        # --- snapshot active task (status.json) ---
+        write_task_snapshot({
+            "name": cfg["task"]["name"],
+            "version": cfg["version"],
+            "source": "telegram",
+            "channels_count": len(channels),
+            "lookback_hours": lookback_hours,
+            "keywords_count": len(keywords),
+            "limit_per_channel": limit_per_channel,
+            "max_items": max_items,
+        })
+
+        # --- run pipeline ---
         now = datetime.now(timezone.utc)
         since = now - timedelta(hours=lookback_hours)
 
         messages = read_messages(
             channels=channels,
             since=since,
-            until=None,
+            until=None,  # until intentionally not part of v1
             limit_per_channel=limit_per_channel,
         )
 
@@ -75,6 +84,18 @@ def main() -> None:
                 "messages_read": len(messages),
                 "matched": len(matched),
                 "snippets": len(extracted),
+            },
+            result_path=result_path,
+        )
+
+    except TaskYamlError as e:
+        mark_error(
+            started_at=started_at,
+            stats={},
+            error={
+                "code": "TASK_YAML_INVALID",
+                "message": "task.yaml validation failed",
+                "details": e.details,
             },
             result_path=result_path,
         )
