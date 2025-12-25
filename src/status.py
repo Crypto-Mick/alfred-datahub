@@ -108,3 +108,26 @@ def mark_error(
         result_path=result_path,
         error=error,
     )
+
+def write_task_snapshot(task: Dict[str, Any]) -> None:
+    """
+    Write/replace 'task' snapshot inside status.json.
+    This is a compact, machine-oriented snapshot of the active task parameters.
+    """
+
+    STATUS_FILE.parent.mkdir(parents=True, exist_ok=True)
+
+    data: Dict[str, Any] = {}
+    if STATUS_FILE.exists():
+        try:
+            with open(STATUS_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            if not isinstance(data, dict):
+                data = {}
+        except Exception:
+            data = {}
+
+    data["task"] = _json_safe(task)
+
+    with open(STATUS_FILE, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
