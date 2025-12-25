@@ -31,14 +31,26 @@ def write_status(
     finished_at: Optional[str] = None,
     stats: Optional[Dict[str, Any]] = None,
     result_path: Optional[str] = None,
-    error: Optional[str] = None,
+    error: Optional[Any] = None,
 ) -> None:
     """
     Canonical status writer for Alfred Data Hub.
     This file is the single source of truth for Home Assistant.
+    Preserves existing 'task' snapshot if present.
     """
 
     STATUS_FILE.parent.mkdir(parents=True, exist_ok=True)
+
+    # --- load existing status (to preserve task snapshot) ---
+    existing: Dict[str, Any] = {}
+    if STATUS_FILE.exists():
+        try:
+            with open(STATUS_FILE, "r", encoding="utf-8") as f:
+                existing = json.load(f)
+            if not isinstance(existing, dict):
+                existing = {}
+        except Exception:
+            existing = {}
 
     payload = {
         "state": state,
@@ -48,6 +60,10 @@ def write_status(
         "result_path": result_path,
         "error": error,
     }
+
+    # 🔑 preserve task snapshot across status updates
+    if "task" in existing:
+        payload["task"] = existing["task"]
 
     with open(STATUS_FILE, "w", encoding="utf-8") as f:
         json.dump(_json_safe(payload), f, ensure_ascii=False, indent=2)
@@ -108,6 +124,7 @@ def mark_error(
         result_path=result_path,
         error=error,
     )
+
 
 def write_task_snapshot(task: Dict[str, Any]) -> None:
     """
