@@ -1,45 +1,90 @@
-"""Storage module for Alfred Data Hub."""
 from __future__ import annotations
 
 import json
+from datetime import datetime, timezone
 from pathlib import Path
 
 
-def _get_field(value: dict, key: str) -> str:
-    field = value.get(key, "")
-    return "" if field is None else str(field)
+def _get_field(item: dict, key: str) -> str:
+    value = item.get(key, "")
+    return "" if value is None else str(value)
 
 
-def save(snippets: list[dict], output_dir: str) -> None:
-    """
-    Saves:
-    - raw.json (machine source of truth)
-    - result.md (human-readable)
-    Always creates both files even if snippets is empty.
-    Must create output_dir if missing.
-    No other side effects.
-    """
+def _headline(text: str, max_len: int = 140) -> str:
+    for sep in (". ", "! ", "? "):
+        if sep in text:
+            text = text.split(sep, 1)[0]
+            break
+    return text.strip()[:max_len] or "Event"
+
+
+def _channel_from_url(url: str) -> str:
+    parts = [p for p in url.split("/") if p]
+    return f"@{parts[-2]}" if len(parts) >= 2 else "@unknown"
+
+
+def save(
+    snippets: list[dict],
+    output_dir: str,
+    *,
+    lookback_hours: int,
+    max_items: int,
+) -> None:
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
 
-    raw_path = output_path / "raw.json"
-    result_path = output_path / "result.md"
+    (output_path / "raw.json").write_text(
+        json.dumps(snippets, ensure_ascii=False),
+        encoding="utf-8",
+    )
 
-    raw_path.write_text(json.dumps(snippets, ensure_ascii=False), encoding="utf-8")
+    generated_at = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M")
 
-    lines: list[str] = ["# Alfred Data Hub — Results"]
+    lines: list[str] = [
+        f"# Crypto Risk Summary — Last {lookback_hours} Hours",
+        "",
+        f"Period: last {lookback_hours} hours  ",
+        "Sources: Telegram  ",
+        f"Generated: {generated_at}",
+        "",
+        "---",
+        "",
+    ]
+
     if not snippets:
-        lines.append("No matches found.")
+        lines.extend(
+            [
+                "## ⚠️ Key Events (0)",
+                "",
+                f"No significant events were detected in the last {lookback_hours} hours.",
+            ]
+        )
     else:
-        for snippet in snippets:
-            date = _get_field(snippet, "date")
-            keyword = _get_field(snippet, "keyword")
-            url = _get_field(snippet, "url")
-            snippet_text = _get_field(snippet, "snippet")
-            lines.append(f"## {date} — {keyword}")
-            lines.append(url)
-            lines.append("")
-            lines.append(snippet_text)
-            lines.append("")
+        events = snippets[:max_items]
+        lines.append(f"## ⚠️ Key Events ({len(events)})")
+        lines.append("")
 
-    result_path.write_text("\n".join(lines), encoding="utf-8")
+        for idx, item in enumerate(events, start=1):
+            text = _get_field(item, "snippet")
+            url = _get_field(item, "url")
+            keyword = _get_field(item, "keyword")
+
+            lines.extend(
+                [
+                    f"### {idx}. {_headline(text)}",
+                    f"**Source:** {_channel_from_url(url)}  ",
+                    f"**Detected keywords:** {keyword}",
+                    "",
+                    text,
+                    "",
+                    f"🔗 {url}",
+                    "",
+                    "---",
+                    "",
+                ]
+            )
+
+    (output_path / "result.md").write_text(
+        "\n".join(lines).rstrip() + "\n",
+        encoding="utf-8",
+    )
