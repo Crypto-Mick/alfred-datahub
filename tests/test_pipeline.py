@@ -76,7 +76,7 @@ def test_main_smoke(tmp_path: Path, monkeypatch) -> None:
         ]
 
     # --- storage mock (new contract) ---
-    def fake_save(*, snippets, output_dir, lookback_hours, max_items):
+    def fake_save(snippets, *, output_dir, lookback_hours, max_items):
         calls["save"] = {
             "snippets": snippets,
             "output_dir": output_dir,
