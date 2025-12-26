@@ -103,9 +103,6 @@ def test_main_smoke(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setattr(main, "mark_done", fake_mark_done)
     monkeypatch.setattr(main, "mark_error", fake_mark_error)
 
-    # redirect output dir
-    monkeypatch.setattr(main, "OUTPUT_DIR", str(tmp_path))
-
     # --- run ---
     main.main()
 
