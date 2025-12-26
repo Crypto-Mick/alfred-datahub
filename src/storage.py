@@ -1,9 +1,15 @@
 from __future__ import annotations
 
 import json
+import re
+import hashlib
 from datetime import datetime, timezone
 from pathlib import Path
 
+
+# =========================
+# helpers (existing)
+# =========================
 
 def _json_safe(value):
     """
@@ -36,6 +42,106 @@ def _channel_from_url(url: str) -> str:
     return f"@{parts[-2]}" if len(parts) >= 2 else "@unknown"
 
 
+# =========================
+# result.md v1 helpers
+# =========================
+
+_URL_RE = re.compile(r"https?://\S+")
+
+
+def _normalize_text(text: str) -> str:
+    text = text.lower()
+    text = _URL_RE.sub("", text)
+    text = " ".join(text.split())
+    return text.strip()
+
+
+def _text_fingerprint(text: str) -> str:
+    norm = _normalize_text(text)
+    return hashlib.sha1(norm.encode("utf-8")).hexdigest()
+
+
+def _compute_importance(item: dict, include_keywords: list[str], now: datetime) -> int:
+    score = 0
+    text = item["snippet"].lower()
+
+    # 1. keyword matches (full text)
+    for kw in include_keywords:
+        score += text.count(kw.lower())
+
+    # 2. keyword in first line
+    first_line = item["snippet"].splitlines()[0].lower() if item["snippet"] else ""
+    for kw in include_keywords:
+        if kw.lower() in first_line:
+            score += 2
+
+    # 3. length heuristic
+    l = len(item["snippet"])
+    if l > 500:
+        score += 1
+    if l > 1000:
+        score += 2
+
+    # 4. freshness
+    age_hours = (now - item["date"]).total_seconds() / 3600
+    if age_hours < 6:
+        score += 2
+    elif age_hours < 12:
+        score += 1
+
+    return score
+
+
+def _prepare_items(
+    snippets: list[dict],
+    *,
+    include_keywords: list[str],
+    max_items: int,
+) -> list[dict]:
+    now = datetime.now(timezone.utc)
+
+    # --- URL dedup ---
+    seen_urls: set[str] = set()
+    tmp: list[dict] = []
+    for item in snippets:
+        url = item.get("url")
+        if not url or url in seen_urls:
+            continue
+        seen_urls.add(url)
+        tmp.append(item)
+
+    # --- text dedup ---
+    seen_fp: set[str] = set()
+    deduped: list[dict] = []
+    for item in tmp:
+        fp = _text_fingerprint(item.get("snippet", ""))
+        if fp in seen_fp:
+            continue
+        seen_fp.add(fp)
+        deduped.append(item)
+
+    # --- compute importance_score ---
+    for item in deduped:
+        item["importance_score"] = _compute_importance(
+            item,
+            include_keywords=include_keywords,
+            now=now,
+        )
+
+    # --- sort ---
+    deduped.sort(
+        key=lambda x: (x["importance_score"], x["date"]),
+        reverse=True,
+    )
+
+    # --- limit ---
+    return deduped[:max_items]
+
+
+# =========================
+# main entry
+# =========================
+
 def save(
     snippets: list[dict],
     output_dir: str,
@@ -52,47 +158,57 @@ def save(
         encoding="utf-8",
     )
 
+    # --- prepare result items ---
+    include_keywords = sorted(
+        {item.get("keyword", "").lower() for item in snippets if item.get("keyword")}
+    )
+
+    items = _prepare_items(
+        snippets,
+        include_keywords=include_keywords,
+        max_items=max_items,
+    )
+
     # --- result.md (human-readable) ---
     generated_at = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M")
 
     lines: list[str] = [
-        f"# Crypto Risk Summary — Last {lookback_hours} Hours",
+        "# Result",
         "",
-        f"Period: last {lookback_hours} hours  ",
-        "Sources: Telegram  ",
-        f"Generated: {generated_at}",
+        f"Task: crypto-risk-last-24h",
+        f"Lookback: {lookback_hours} hours",
+        f"Generated: {generated_at} UTC",
         "",
         "---",
         "",
+        f"## Items ({len(items)})",
+        "",
     ]
 
-    if not snippets:
+    if not items:
         lines.extend(
             [
-                "## ⚠️ Key Events (0)",
-                "",
                 f"No significant events were detected in the last {lookback_hours} hours.",
+                "",
             ]
         )
     else:
-        events = snippets[:max_items]
-        lines.append(f"## ⚠️ Key Events ({len(events)})")
-        lines.append("")
-
-        for idx, item in enumerate(events, start=1):
+        for idx, item in enumerate(items, start=1):
             text = _get_field(item, "snippet")
             url = _get_field(item, "url")
-            keyword = _get_field(item, "keyword")
+            source = _channel_from_url(url)
+            date = item.get("date")
+            date_str = date.isoformat() + "Z" if isinstance(date, datetime) else ""
 
             lines.extend(
                 [
-                    f"### {idx}. {_headline(text)}",
-                    f"**Source:** {_channel_from_url(url)}  ",
-                    f"**Detected keywords:** {keyword}",
+                    f"{idx}. {_headline(text)}",
                     "",
-                    text,
+                    f"   Source: {source}",
+                    f"   Date: {date_str}",
+                    f"   URL: {url}",
                     "",
-                    f"🔗 {url}",
+                    f"   {text}",
                     "",
                     "---",
                     "",
