@@ -86,8 +86,12 @@ def validate_task_yaml_v1(cfg: dict) -> dict:
         _err("sources", "type", "dict", type(sources).__name__)
 
     for k in sources.keys():
-        if k not in {"telegram"}:
+        if k not in {"telegram", "web"}:
             _err(f"sources.{k}", "unknown_field")
+
+    # telegram (required)
+    if "telegram" not in sources:
+        _err("sources.telegram", "missing_field")
 
     telegram = sources["telegram"]
     if not isinstance(telegram, dict):
@@ -132,6 +136,50 @@ def validate_task_yaml_v1(cfg: dict) -> dict:
             "1..5000",
             limit_per_channel,
         )
+
+    # web (optional)
+    normalized_web_sites = []
+    if "web" in sources:
+        web = sources["web"]
+        if not isinstance(web, dict):
+            _err("sources.web", "type", "dict", type(web).__name__)
+
+        for k in web.keys():
+            if k not in {"sites"}:
+                _err(f"sources.web.{k}", "unknown_field")
+
+        sites = web.get("sites")
+        if not isinstance(sites, list) or not sites:
+            _err("sources.web.sites", "empty")
+
+        seen = set()
+        for i, s in enumerate(sites):
+            if not isinstance(s, dict):
+                _err(f"sources.web.sites[{i}]", "type", "dict", type(s).__name__)
+
+            for k in s.keys():
+                if k not in {"site", "feed_url"}:
+                    _err(f"sources.web.sites[{i}].{k}", "unknown_field")
+
+            site = s.get("site")
+            if not isinstance(site, str) or not site.strip():
+                _err(f"sources.web.sites[{i}].site", "empty")
+
+            feed_url = s.get("feed_url")
+            if not isinstance(feed_url, str) or not feed_url.strip():
+                _err(f"sources.web.sites[{i}].feed_url", "empty")
+
+            key = (site.strip(), feed_url.strip())
+            if key in seen:
+                _err("sources.web.sites", "duplicate")
+            seen.add(key)
+
+            normalized_web_sites.append(
+                {
+                    "site": site.strip(),
+                    "feed_url": feed_url.strip(),
+                }
+            )
 
     # ---------- Phase 6: filters ----------
     filters = cfg.get("filters", {})
@@ -190,6 +238,17 @@ def validate_task_yaml_v1(cfg: dict) -> dict:
         _err("output.max_items", "range", "1..200", max_items)
 
     # ---------- Final normalized config ----------
+    normalized_sources = {
+        "telegram": {
+            "channels": normalized_channels,
+            "limit_per_channel": limit_per_channel,
+        }
+    }
+    if normalized_web_sites:
+        normalized_sources["web"] = {
+            "sites": normalized_web_sites,
+        }
+
     return {
         "version": 1,
         "task": {
@@ -199,12 +258,7 @@ def validate_task_yaml_v1(cfg: dict) -> dict:
         "time": {
             "lookback_hours": lookback_hours,
         },
-        "sources": {
-            "telegram": {
-                "channels": normalized_channels,
-                "limit_per_channel": limit_per_channel,
-            }
-        },
+        "sources": normalized_sources,
         "filters": {
             "include_keywords": include_keywords,
             "exclude_keywords": exclude_keywords,
