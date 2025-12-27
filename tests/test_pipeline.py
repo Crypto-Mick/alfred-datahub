@@ -33,6 +33,7 @@ def test_main_smoke(tmp_path: Path, monkeypatch) -> None:
     """
 
     calls = {}
+    monkeypatch.delenv("TASK_FILE", raising=False)
 
     # --- telegram reader mock ---
     def fake_read_messages(*, channels, since, until, limit_per_channel):
