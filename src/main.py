@@ -83,8 +83,9 @@ for site in web_sites:
     )
     items.extend(site_items)
 
-        matched = match(messages, keywords)
+        matched = match(items, keywords)
         extracted = extract(matched, keywords)
+
 
         save(
             extracted,
