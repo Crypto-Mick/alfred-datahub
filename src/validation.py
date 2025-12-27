@@ -1,5 +1,3 @@
-# src/validation.py
-
 class TaskYamlError(Exception):
     def __init__(self, details: dict):
         self.details = details
@@ -89,53 +87,57 @@ def validate_task_yaml_v1(cfg: dict) -> dict:
         if k not in {"telegram", "web"}:
             _err(f"sources.{k}", "unknown_field")
 
-    # telegram (required)
-    if "telegram" not in sources:
-        _err("sources.telegram", "missing_field")
-
-    telegram = sources["telegram"]
-    if not isinstance(telegram, dict):
-        _err(
-            "sources.telegram",
-            "type",
-            "dict",
-            type(telegram).__name__,
-        )
-
-    for k in telegram.keys():
-        if k not in {"channels", "limit_per_channel"}:
-            _err(f"sources.telegram.{k}", "unknown_field")
-
-    # channels (normalize @ here)
-    channels = telegram.get("channels")
-    if not isinstance(channels, list) or not channels:
-        _err("sources.telegram.channels", "empty")
+    # require at least one source
+    if "telegram" not in sources and "web" not in sources:
+        _err("sources", "missing_field")
 
     normalized_channels = []
-    for i, ch in enumerate(channels):
-        if not isinstance(ch, str):
+    limit_per_channel = None
+
+    # telegram (optional)
+    if "telegram" in sources:
+        telegram = sources["telegram"]
+        if not isinstance(telegram, dict):
             _err(
-                f"sources.telegram.channels[{i}]",
+                "sources.telegram",
                 "type",
-                "str",
-                type(ch).__name__,
+                "dict",
+                type(telegram).__name__,
             )
-        c = ch.lstrip("@").strip()
-        if not c:
-            _err(f"sources.telegram.channels[{i}]", "empty")
-        normalized_channels.append(c)
 
-    if len(set(normalized_channels)) != len(normalized_channels):
-        _err("sources.telegram.channels", "duplicate")
+        for k in telegram.keys():
+            if k not in {"channels", "limit_per_channel"}:
+                _err(f"sources.telegram.{k}", "unknown_field")
 
-    limit_per_channel = telegram.get("limit_per_channel")
-    if not isinstance(limit_per_channel, int) or not (1 <= limit_per_channel <= 5000):
-        _err(
-            "sources.telegram.limit_per_channel",
-            "range",
-            "1..5000",
-            limit_per_channel,
-        )
+        # channels (normalize @ here)
+        channels = telegram.get("channels")
+        if not isinstance(channels, list) or not channels:
+            _err("sources.telegram.channels", "empty")
+
+        for i, ch in enumerate(channels):
+            if not isinstance(ch, str):
+                _err(
+                    f"sources.telegram.channels[{i}]",
+                    "type",
+                    "str",
+                    type(ch).__name__,
+                )
+            c = ch.lstrip("@").strip()
+            if not c:
+                _err(f"sources.telegram.channels[{i}]", "empty")
+            normalized_channels.append(c)
+
+        if len(set(normalized_channels)) != len(normalized_channels):
+            _err("sources.telegram.channels", "duplicate")
+
+        limit_per_channel = telegram.get("limit_per_channel")
+        if not isinstance(limit_per_channel, int) or not (1 <= limit_per_channel <= 5000):
+            _err(
+                "sources.telegram.limit_per_channel",
+                "range",
+                "1..5000",
+                limit_per_channel,
+            )
 
     # web (optional)
     normalized_web_sites = []
@@ -238,12 +240,14 @@ def validate_task_yaml_v1(cfg: dict) -> dict:
         _err("output.max_items", "range", "1..200", max_items)
 
     # ---------- Final normalized config ----------
-    normalized_sources = {
-        "telegram": {
+    normalized_sources = {}
+
+    if normalized_channels:
+        normalized_sources["telegram"] = {
             "channels": normalized_channels,
             "limit_per_channel": limit_per_channel,
         }
-    }
+
     if normalized_web_sites:
         normalized_sources["web"] = {
             "sites": normalized_web_sites,
