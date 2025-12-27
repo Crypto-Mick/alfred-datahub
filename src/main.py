@@ -31,7 +31,10 @@ def main() -> None:
 
     try:
         # --- load + validate config (gate) ---
-        config_path = Path(__file__).resolve().parents[1] / "config" / "task.yaml"
+        import os
+        task_file = os.getenv("TASK_FILE", "config/task.yaml")
+        config_path = Path(task_file).resolve()
+
         raw_cfg = _load_yaml(config_path)
 
         cfg = validate_task_yaml_v1(raw_cfg)
