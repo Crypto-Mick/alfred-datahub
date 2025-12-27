@@ -42,6 +42,7 @@ def main() -> None:
         lookback_hours = cfg["time"]["lookback_hours"]
         limit_per_channel = cfg["sources"]["telegram"]["limit_per_channel"]
         max_items = cfg["output"]["max_items"]
+        web_sites = cfg["sources"].get("web", {}).get("sites", [])
 
         # --- mark running ---
         started_at = mark_running(result_path=result_path)
