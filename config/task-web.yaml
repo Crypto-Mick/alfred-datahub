@@ -1,8 +1,8 @@
 version: 1
 
 task:
-  name: "web-generic"
-  description: "Generic web scraping task"
+  name: "web-habr-tech"
+  description: "Habr articles via RSS (tech keywords)"
 
 time:
   lookback_hours: 168
@@ -10,8 +10,8 @@ time:
 sources:
   web:
     sites:
-      - site: "3dnews.ru"
-        feed_url: "https://3dnews.ru/rss"
+      - site: "habr.com"
+        feed_url: "https://habr.com/ru/rss/articles/"
 
 filters:
   include_keywords:
