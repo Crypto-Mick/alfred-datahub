@@ -96,6 +96,7 @@ def test_main_smoke(tmp_path: Path, monkeypatch) -> None:
 
     # --- patch ---
     monkeypatch.setattr(main, "read_messages", fake_read_messages)
+    monkeypatch.setattr(main, "read_site_items", fake_read_site_items)
     monkeypatch.setattr(main, "match", fake_match)
     monkeypatch.setattr(main, "extract", fake_extract)
     monkeypatch.setattr(main, "save", fake_save)
