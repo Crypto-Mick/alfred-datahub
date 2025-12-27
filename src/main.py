@@ -8,6 +8,7 @@ from src.matcher import match
 from src.status import mark_done, mark_error, mark_running, write_task_snapshot
 from src.storage import save
 from src.tg_reader import read_messages
+from src.web_reader import read_site_items
 from src.validation import validate_task_yaml_v1, TaskYamlError
 
 
@@ -41,6 +42,7 @@ def main() -> None:
         lookback_hours = cfg["time"]["lookback_hours"]
         limit_per_channel = cfg["sources"]["telegram"]["limit_per_channel"]
         max_items = cfg["output"]["max_items"]
+        web_sites = cfg["sources"].get("web", {}).get("sites", [])
 
         # --- mark running ---
         started_at = mark_running(result_path=result_path)
@@ -61,15 +63,29 @@ def main() -> None:
         now = datetime.now(timezone.utc)
         since = now - timedelta(hours=lookback_hours)
 
-        messages = read_messages(
-            channels=channels,
-            since=since,
-            until=None,  # until intentionally not part of v1
-            limit_per_channel=limit_per_channel,
-        )
+        items = []
 
-        matched = match(messages, keywords)
+# --- telegram ---
+tg_messages = read_messages(
+    channels=channels,
+    since=since,
+    until=None,  # until intentionally not part of v1
+    limit_per_channel=limit_per_channel,
+)
+items.extend(tg_messages)
+
+# --- web ---
+for site in web_sites:
+    site_items = read_site_items(
+        site=site["site"],
+        feed_url=site["feed_url"],
+        lookback_hours=lookback_hours,
+    )
+    items.extend(site_items)
+
+        matched = match(items, keywords)
         extracted = extract(matched, keywords)
+
 
         save(
             extracted,
@@ -81,7 +97,7 @@ def main() -> None:
         mark_done(
             started_at=started_at,
             stats={
-                "messages_read": len(messages),
+                "messages_read": len(items),
                 "matched": len(matched),
                 "snippets": len(extracted),
             },
