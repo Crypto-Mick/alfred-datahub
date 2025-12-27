@@ -1,0 +1,30 @@
+version: 1
+
+task:
+  name: "albion-api-smoke"
+  description: "Minimal Albion API smoke test"
+
+time:
+  lookback_hours: 24
+
+sources:
+  api:
+    server: "west"
+
+    item_ids:
+      - "T4_BAG"
+      - "T4_ORE"
+
+    locations:
+      - "Bridgewatch"
+
+    qualities:
+      - 1
+      - 2
+
+filters:
+  include_keywords:
+    - T4
+
+output:
+  max_items: 10
