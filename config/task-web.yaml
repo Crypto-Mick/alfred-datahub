@@ -25,4 +25,3 @@ filters:
 
 output:
   max_items: 10
-  format: markdown
