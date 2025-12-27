@@ -9,6 +9,7 @@ from src.status import mark_done, mark_error, mark_running, write_task_snapshot
 from src.storage import save
 from src.tg_reader import read_messages
 from src.web_reader import read_site_items
+from src.api_reader import read_price_snapshots
 from src.validation import validate_task_yaml_v1, TaskYamlError
 
 
@@ -83,6 +84,18 @@ def main() -> None:
                     lookback_hours=lookback_hours,
                 )
                 items.extend(site_items)
+
+        # --- api ---
+        if "api" in sources:
+            api_cfg = sources["api"]
+
+            api_items = read_price_snapshots(
+                server=api_cfg.get("server", "west"),
+                item_ids=api_cfg["item_ids"],
+                locations=api_cfg["locations"],
+                qualities=api_cfg["qualities"],
+            )
+            items.extend(api_items)
 
         # --- pipeline ---
         matched = match(items, keywords)
