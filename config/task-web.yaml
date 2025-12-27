@@ -2,12 +2,16 @@ version: 1
 
 task:
   name: "web-generic"
-  description: "Generic web scraping task for arbitrary queries"
+  description: "Generic web scraping task"
 
 time:
-  lookback_hours: 72
+  lookback_hours: 168
 
 sources:
+  telegram:
+    channels: []
+    limit_per_channel: 0
+
   web:
     sites:
       - site: "3dnews.ru"
@@ -15,15 +19,14 @@ sources:
 
 filters:
   include_keywords:
+    - intel
+    - amd
+    - nvidia
+    - cpu
+    - gpu
     - память
     - ddr5
-    - цена
-
-  exclude_keywords:
-    - обзор
-    - тест
-    - мнение
 
 output:
-  max_items: 7
+  max_items: 10
   format: markdown
