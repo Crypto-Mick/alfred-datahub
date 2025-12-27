@@ -8,10 +8,6 @@ time:
   lookback_hours: 168
 
 sources:
-  telegram:
-    channels: []
-    limit_per_channel: 0
-
   web:
     sites:
       - site: "3dnews.ru"
