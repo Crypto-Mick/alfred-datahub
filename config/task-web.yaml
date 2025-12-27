@@ -1,0 +1,29 @@
+version: 1
+
+task:
+  name: "web-generic"
+  description: "Generic web scraping task for arbitrary queries"
+
+time:
+  lookback_hours: 72
+
+sources:
+  web:
+    sites:
+      - site: "3dnews.ru"
+        feed_url: "https://3dnews.ru/rss"
+
+filters:
+  include_keywords:
+    - память
+    - ddr5
+    - цена
+
+  exclude_keywords:
+    - обзор
+    - тест
+    - мнение
+
+output:
+  max_items: 7
+  format: markdown
