@@ -1,4 +1,3 @@
-
 version: 1
 
 task:
@@ -16,6 +15,11 @@ sources:
       - "@whale_alert"
       - "@coinbase"
     limit_per_channel: 200
+
+  web:
+    sites:
+      - site: "3dnews.ru"
+        feed_url: "https://3dnews.ru/rss"
 
 filters:
   include_keywords:
