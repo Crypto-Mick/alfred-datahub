@@ -97,7 +97,7 @@ for site in web_sites:
         mark_done(
             started_at=started_at,
             stats={
-                "messages_read": len(messages),
+                "messages_read": len(items),
                 "matched": len(matched),
                 "snippets": len(extracted),
             },
