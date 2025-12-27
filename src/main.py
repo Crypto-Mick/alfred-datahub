@@ -8,6 +8,7 @@ from src.matcher import match
 from src.status import mark_done, mark_error, mark_running, write_task_snapshot
 from src.storage import save
 from src.tg_reader import read_messages
+from src.web_reader import read_site_items
 from src.validation import validate_task_yaml_v1, TaskYamlError
 
 
