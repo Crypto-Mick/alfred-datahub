@@ -84,44 +84,35 @@ def validate_task_yaml_v1(cfg: dict) -> dict:
         _err("sources", "type", "dict", type(sources).__name__)
 
     for k in sources.keys():
-        if k not in {"telegram", "web"}:
+        if k not in {"telegram", "web", "api"}:
             _err(f"sources.{k}", "unknown_field")
 
     # require at least one source
-    if "telegram" not in sources and "web" not in sources:
+    if not any(k in sources for k in ("telegram", "web", "api")):
         _err("sources", "missing_field")
 
     normalized_channels = []
     limit_per_channel = None
+    normalized_web_sites = []
+    normalized_api = None
 
-    # telegram (optional)
+    # ---------- telegram ----------
     if "telegram" in sources:
         telegram = sources["telegram"]
         if not isinstance(telegram, dict):
-            _err(
-                "sources.telegram",
-                "type",
-                "dict",
-                type(telegram).__name__,
-            )
+            _err("sources.telegram", "type", "dict", type(telegram).__name__)
 
         for k in telegram.keys():
             if k not in {"channels", "limit_per_channel"}:
                 _err(f"sources.telegram.{k}", "unknown_field")
 
-        # channels (normalize @ here)
         channels = telegram.get("channels")
         if not isinstance(channels, list) or not channels:
             _err("sources.telegram.channels", "empty")
 
         for i, ch in enumerate(channels):
             if not isinstance(ch, str):
-                _err(
-                    f"sources.telegram.channels[{i}]",
-                    "type",
-                    "str",
-                    type(ch).__name__,
-                )
+                _err(f"sources.telegram.channels[{i}]", "type", "str", type(ch).__name__)
             c = ch.lstrip("@").strip()
             if not c:
                 _err(f"sources.telegram.channels[{i}]", "empty")
@@ -139,8 +130,7 @@ def validate_task_yaml_v1(cfg: dict) -> dict:
                 limit_per_channel,
             )
 
-    # web (optional)
-    normalized_web_sites = []
+    # ---------- web ----------
     if "web" in sources:
         web = sources["web"]
         if not isinstance(web, dict):
@@ -177,11 +167,53 @@ def validate_task_yaml_v1(cfg: dict) -> dict:
             seen.add(key)
 
             normalized_web_sites.append(
-                {
-                    "site": site.strip(),
-                    "feed_url": feed_url.strip(),
-                }
+                {"site": site.strip(), "feed_url": feed_url.strip()}
             )
+
+    # ---------- api ----------
+    if "api" in sources:
+        api = sources["api"]
+        if not isinstance(api, dict):
+            _err("sources.api", "type", "dict", type(api).__name__)
+
+        for k in api.keys():
+            if k not in {"server", "item_ids", "locations", "qualities"}:
+                _err(f"sources.api.{k}", "unknown_field")
+
+        server = api.get("server", "west")
+        if not isinstance(server, str) or not server.strip():
+            _err("sources.api.server", "empty")
+
+        def _list_of_str(path, v):
+            if not isinstance(v, list) or not v:
+                _err(path, "empty")
+            out = []
+            for i, x in enumerate(v):
+                if not isinstance(x, str) or not x.strip():
+                    _err(f"{path}[{i}]", "empty")
+                out.append(x.strip())
+            if len(set(out)) != len(out):
+                _err(path, "duplicate")
+            return out
+
+        def _list_of_int(path, v):
+            if not isinstance(v, list) or not v:
+                _err(path, "empty")
+            out = []
+            for i, x in enumerate(v):
+                if not isinstance(x, int) or not (1 <= x <= 5):
+                    _err(f"{path}[{i}]", "range", "1..5", x)
+                out.append(x)
+            if len(set(out)) != len(out):
+                _err(path, "duplicate")
+            return out
+
+        normalized_api = {
+            "server": server.strip(),
+            "item_ids": _list_of_str("sources.api.item_ids", api.get("item_ids")),
+            "locations": _list_of_str("sources.api.locations", api.get("locations")),
+            "qualities": _list_of_int("sources.api.qualities", api.get("qualities")),
+        }
 
     # ---------- Phase 6: filters ----------
     filters = cfg.get("filters", {})
@@ -198,12 +230,7 @@ def validate_task_yaml_v1(cfg: dict) -> dict:
         out = []
         for i, v in enumerate(value):
             if not isinstance(v, str):
-                _err(
-                    f"{path}[{i}]",
-                    "type",
-                    "str",
-                    type(v).__name__,
-                )
+                _err(f"{path}[{i}]", "type", "str", type(v).__name__)
             s = v.strip()
             if not s:
                 _err(f"{path}[{i}]", "empty")
@@ -252,6 +279,9 @@ def validate_task_yaml_v1(cfg: dict) -> dict:
         normalized_sources["web"] = {
             "sites": normalized_web_sites,
         }
+
+    if normalized_api:
+        normalized_sources["api"] = normalized_api
 
     return {
         "version": 1,
