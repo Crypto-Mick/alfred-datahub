@@ -1,0 +1,42 @@
+version: 1
+
+task:
+  name: "albion-market-snapshots-72h"
+  description: "Albion Online market price snapshots (API, last 72h)"
+
+time:
+  lookback_hours: 72
+
+sources:
+  api:
+    server: "west"
+    item_ids:
+      - "T4_ORE"
+      - "T6_WOOD"
+      - "T4_BAG"
+      - "T5_HORSE"
+      - "T4_ARTEFACT_ARMOR_PLATE_UNDEAD"
+      - "T4_BOW"
+      - "T6_SWORD"
+      - "T5_ARMOR_PLATE"
+      - "T4_POTION_HEAL"
+      - "T6_BAG"
+
+    locations:
+      - "Bridgewatch"
+      - "Martlock"
+      - "Fort Sterling"
+
+    qualities:
+      - 1
+      - 2
+      - 3
+
+filters:
+  include_keywords:
+    - T4
+    - T5
+    - T6
+
+output:
+  max_items: 20
