@@ -63,12 +63,25 @@ def main() -> None:
         now = datetime.now(timezone.utc)
         since = now - timedelta(hours=lookback_hours)
 
-        messages = read_messages(
-            channels=channels,
-            since=since,
-            until=None,  # until intentionally not part of v1
-            limit_per_channel=limit_per_channel,
-        )
+        items = []
+
+# --- telegram ---
+tg_messages = read_messages(
+    channels=channels,
+    since=since,
+    until=None,  # until intentionally not part of v1
+    limit_per_channel=limit_per_channel,
+)
+items.extend(tg_messages)
+
+# --- web ---
+for site in web_sites:
+    site_items = read_site_items(
+        site=site["site"],
+        feed_url=site["feed_url"],
+        lookback_hours=lookback_hours,
+    )
+    items.extend(site_items)
 
         matched = match(messages, keywords)
         extracted = extract(matched, keywords)
