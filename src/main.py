@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-
+import os
 import yaml
 
 from src.extractor import extract
@@ -31,64 +31,62 @@ def main() -> None:
 
     try:
         # --- load + validate config (gate) ---
-        import os
         task_file = os.getenv("TASK_FILE", "config/task.yaml")
         config_path = Path(task_file).resolve()
 
         raw_cfg = _load_yaml(config_path)
-
         cfg = validate_task_yaml_v1(raw_cfg)
 
-        # --- unpack validated config ---
-        channels = cfg["sources"]["telegram"]["channels"]
+        # --- unpack common config ---
         keywords = cfg["filters"]["include_keywords"]
         lookback_hours = cfg["time"]["lookback_hours"]
-        limit_per_channel = cfg["sources"]["telegram"]["limit_per_channel"]
         max_items = cfg["output"]["max_items"]
-        web_sites = cfg["sources"].get("web", {}).get("sites", [])
+
+        sources = cfg["sources"]
 
         # --- mark running ---
         started_at = mark_running(result_path=result_path)
 
-        # --- snapshot active task (status.json) ---
+        # --- snapshot ---
         write_task_snapshot({
             "name": cfg["task"]["name"],
             "version": cfg["version"],
-            "source": "telegram",
-            "channels_count": len(channels),
+            "sources": list(sources.keys()),
             "lookback_hours": lookback_hours,
             "keywords_count": len(keywords),
-            "limit_per_channel": limit_per_channel,
             "max_items": max_items,
         })
 
-        # --- run pipeline ---
+        # --- collect items ---
         now = datetime.now(timezone.utc)
         since = now - timedelta(hours=lookback_hours)
 
         items = []
 
         # --- telegram ---
-        tg_messages = read_messages(
-            channels=channels,
-            since=since,
-            until=None,  # until intentionally not part of v1
-            limit_per_channel=limit_per_channel,
-        )
-        items.extend(tg_messages)
+        if "telegram" in sources:
+            tg_cfg = sources["telegram"]
+            tg_messages = read_messages(
+                channels=tg_cfg["channels"],
+                since=since,
+                until=None,
+                limit_per_channel=tg_cfg["limit_per_channel"],
+            )
+            items.extend(tg_messages)
 
         # --- web ---
-        for site in web_sites:
-            site_items = read_site_items(
-                site=site["site"],
-                feed_url=site["feed_url"],
-                lookback_hours=lookback_hours,
-            )
-            items.extend(site_items)
+        if "web" in sources:
+            for site in sources["web"]["sites"]:
+                site_items = read_site_items(
+                    site=site["site"],
+                    feed_url=site["feed_url"],
+                    lookback_hours=lookback_hours,
+                )
+                items.extend(site_items)
 
+        # --- pipeline ---
         matched = match(items, keywords)
         extracted = extract(matched, keywords)
-
 
         save(
             extracted,
@@ -100,7 +98,7 @@ def main() -> None:
         mark_done(
             started_at=started_at,
             stats={
-                "messages_read": len(items),
+                "items_read": len(items),
                 "matched": len(matched),
                 "snippets": len(extracted),
             },
