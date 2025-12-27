@@ -51,6 +51,10 @@ def test_main_smoke(tmp_path: Path, monkeypatch) -> None:
             }
         ]
 
+    # --- web reader mock ---
+    def fake_read_site_items(*, site, feed_url, lookback_hours):
+        return []
+
     # --- matcher mock ---
     def fake_match(messages, keywords):
         calls["match"] = {
