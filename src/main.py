@@ -52,9 +52,9 @@ def main() -> None:
 
         # --- snapshot ---
         write_task_snapshot({
-            "name": cfg["task"]["name"],
+            "name": "manual-task",
             "version": cfg["version"],
-            "sources": list(sources.keys()),
+            "sources": [s["type"] for s in sources],
             "lookback_hours": lookback_hours,
             "keywords_count": len(keywords),
             "max_items": max_items,
