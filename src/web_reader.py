@@ -4,11 +4,14 @@ from datetime import datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
 from html.parser import HTMLParser
 from typing import Any
+from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 import xml.etree.ElementTree as ET
 
 
-# ---------- helpers ----------
+# ============================================================
+# Helpers
+# ============================================================
 
 class _HTMLStripper(HTMLParser):
     def __init__(self) -> None:
@@ -66,7 +69,17 @@ def fetch_url(url: str, timeout_seconds: int = 20) -> str:
         return raw.decode("utf-8", errors="replace")
 
 
-# ---------- RSS parsing (internal discovery) ----------
+def _normalize_site(site: str) -> str:
+    site = site.strip()
+    if "://" in site:
+        parsed = urlparse(site)
+        return parsed.netloc.lower()
+    return site.lower()
+
+
+# ============================================================
+# RSS parsing (internal discovery)
+# ============================================================
 
 def _first_text(elem: ET.Element, paths: list[str]) -> str:
     for p in paths:
@@ -107,7 +120,9 @@ def parse_rss(xml_text: str, site: str) -> list[dict[str, Any]]:
     return items
 
 
-# ---------- site-specific routing ----------
+# ============================================================
+# Site → RSS routing
+# ============================================================
 
 _SITE_FEEDS: dict[str, str] = {
     "3dnews.ru": "https://3dnews.ru/rss",
@@ -115,12 +130,15 @@ _SITE_FEEDS: dict[str, str] = {
 
 
 def _get_feed_url(site: str) -> str:
-    if site in _SITE_FEEDS:
-        return _SITE_FEEDS[site]
+    key = _normalize_site(site)
+    if key in _SITE_FEEDS:
+        return _SITE_FEEDS[key]
     raise RuntimeError(f"No RSS feed configured for site: {site}")
 
 
-# ---------- site-specific article extraction ----------
+# ============================================================
+# Site-specific article extraction
+# ============================================================
 
 class _ArticleTextExtractor(HTMLParser):
     def __init__(self) -> None:
@@ -159,7 +177,9 @@ def extract_3dnews_article_text(html: str) -> str:
     return parser.get_text().strip()
 
 
-# ---------- public API (v1) ----------
+# ============================================================
+# Public API (task.yaml v1)
+# ============================================================
 
 def read_site_items(
     *,
@@ -167,6 +187,14 @@ def read_site_items(
     lookback_hours: int,
     now: datetime | None = None,
 ) -> list[dict[str, Any]]:
+    """
+    Public v1 API.
+
+    site            - URL or hostname from task.yaml
+    lookback_hours  - common lookback window
+    now             - optional override (for testing)
+    """
+
     if lookback_hours <= 0:
         raise ValueError("lookback_hours must be positive")
 
@@ -174,16 +202,16 @@ def read_site_items(
     since = now_dt - timedelta(hours=lookback_hours)
 
     feed_url = _get_feed_url(site)
-
     rss_xml = fetch_url(feed_url)
-    discovered = parse_rss(rss_xml, site)
 
+    discovered = parse_rss(rss_xml, site)
     out: list[dict[str, Any]] = []
 
     for it in discovered:
         dt = it.get("date")
         if not isinstance(dt, datetime):
             continue
+
         dt = _as_aware_datetime(dt)
         if dt < since:
             continue
@@ -191,7 +219,7 @@ def read_site_items(
         full_text = ""
         try:
             html = fetch_url(it["url"])
-            if site == "3dnews.ru":
+            if _normalize_site(site) == "3dnews.ru":
                 full_text = extract_3dnews_article_text(html)
         except Exception:
             full_text = ""
