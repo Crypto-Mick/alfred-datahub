@@ -10,7 +10,7 @@ from src.storage import save
 from src.tg_reader import read_messages
 from src.web_reader import read_site_items
 from src.api_reader import read_price_snapshots
-from src.validation import validate_task_yaml_v1, TaskYamlError
+from src.validation_v1 import validate_task_yaml_v1, TaskYamlError
 
 
 def _load_yaml(path: Path) -> dict:
