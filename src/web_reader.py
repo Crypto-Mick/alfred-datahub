@@ -203,8 +203,12 @@ def read_site_items(
 
     feed_url = _get_feed_url(site)
     rss_xml = fetch_url(feed_url)
-
-    discovered = parse_rss(rss_xml, site)
+    
+    try:
+        discovered = parse_rss(rss_xml, site)
+    except Exception:
+        # Broken RSS / HTML instead of XML / transient error
+        return []
     out: list[dict[str, Any]] = []
 
     for it in discovered:
