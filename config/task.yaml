@@ -1,14 +1,23 @@
-version: 1
+version: v1
 
-task:
-  name: "crypto-risk-last-24h"
-  description: "Significant crypto-related risk events over the last 24 hours"
+lookback_hours: 24
 
-time:
-  lookback_hours: 24
+keywords:
+  - hack
+  - exploit
+  - outage
+  - halted
+  - suspended
+  - breach
+  - sec
+  - regulation
+  - lawsuit
+  - etf
+  - ban
+  - fine
 
 sources:
-  telegram:
+  - type: telegram
     channels:
       - "@binance_announcements"
       - "@cointelegraph"
@@ -16,35 +25,9 @@ sources:
       - "@coinbase"
     limit_per_channel: 200
 
-  web:
+  - type: web
     sites:
-      - site: "3dnews.ru"
-        feed_url: "https://3dnews.ru/rss"
+      - "https://3dnews.ru"
 
-filters:
-  include_keywords:
-    - hack
-    - exploit
-    - outage
-    - halted
-    - suspended
-    - breach
-    - sec
-    - regulation
-    - lawsuit
-    - etf
-    - ban
-    - fine
-
-  exclude_keywords:
-    - price
-    - chart
-    - pump
-    - dump
-    - prediction
-    - opinion
-    - rumor
-
-output:
+limits:
   max_items: 7
-  format: markdown
