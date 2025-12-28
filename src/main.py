@@ -39,9 +39,11 @@ def main() -> None:
         cfg = validate_task_yaml_v1(raw_cfg)
 
         # --- unpack common config ---
-        keywords = cfg["filters"]["include_keywords"]
-        lookback_hours = cfg["time"]["lookback_hours"]
-        max_items = cfg["output"]["max_items"]
+        keywords = cfg["keywords"]
+        lookback_hours = cfg["lookback_hours"]
+
+        limits = cfg.get("limits", {})
+        max_items = limits.get("max_items")
 
         sources = cfg["sources"]
 
