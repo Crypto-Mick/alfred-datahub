@@ -66,7 +66,7 @@ def fetch_url(url: str, timeout_seconds: int = 20) -> str:
         return raw.decode("utf-8", errors="replace")
 
 
-# ---------- RSS parsing (discovery only) ----------
+# ---------- RSS parsing (internal discovery) ----------
 
 def _first_text(elem: ET.Element, paths: list[str]) -> str:
     for p in paths:
@@ -107,7 +107,20 @@ def parse_rss(xml_text: str, site: str) -> list[dict[str, Any]]:
     return items
 
 
-# ---------- 3dnews HTML article parsing ----------
+# ---------- site-specific routing ----------
+
+_SITE_FEEDS: dict[str, str] = {
+    "3dnews.ru": "https://3dnews.ru/rss",
+}
+
+
+def _get_feed_url(site: str) -> str:
+    if site in _SITE_FEEDS:
+        return _SITE_FEEDS[site]
+    raise RuntimeError(f"No RSS feed configured for site: {site}")
+
+
+# ---------- site-specific article extraction ----------
 
 class _ArticleTextExtractor(HTMLParser):
     def __init__(self) -> None:
@@ -146,12 +159,11 @@ def extract_3dnews_article_text(html: str) -> str:
     return parser.get_text().strip()
 
 
-# ---------- public API ----------
+# ---------- public API (v1) ----------
 
 def read_site_items(
     *,
     site: str,
-    feed_url: str,
     lookback_hours: int,
     now: datetime | None = None,
 ) -> list[dict[str, Any]]:
@@ -160,6 +172,8 @@ def read_site_items(
 
     now_dt = _as_aware_datetime(now) if now else _now_utc()
     since = now_dt - timedelta(hours=lookback_hours)
+
+    feed_url = _get_feed_url(site)
 
     rss_xml = fetch_url(feed_url)
     discovered = parse_rss(rss_xml, site)
