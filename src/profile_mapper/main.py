@@ -47,3 +47,12 @@ def run(input_path: str, output_dir: str) -> None:
 
     if result.status in ("ok", "trimmed") and result.task_yaml:
         write_task_yaml(out_dir, result.task_yaml)
+
+if __name__ == "__main__":
+    import sys
+
+    if len(sys.argv) != 3:
+        print("Usage: python -m src.profile_mapper.main <input.json> <output_dir>")
+        sys.exit(1)
+
+    run(sys.argv[1], sys.argv[2])
