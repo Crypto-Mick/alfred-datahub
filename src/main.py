@@ -92,10 +92,33 @@ def _collect_items_from_sources(sources: list, since: datetime, lookback_hours: 
 def main() -> None:
     started_at = None
     result_path = "output/result.md"
+    
+    # --- preflight: profile mapper gate ---
+    runtime_input = Path("runtime/input/input.json")
+    runtime_mapper_dir = Path("runtime/mapper")
+    runtime_task = runtime_mapper_dir / "task.yaml"
 
+    # no human input -> nothing to do
+    if not runtime_input.exists():
+        return
+
+    # run profile mapper
+    from src.profile_mapper.main import run as run_mapper
+    run_mapper(
+        input_path=str(runtime_input),
+        output_dir=str(runtime_mapper_dir),
+    )
+
+    # mapper decided to stop the run (denied / error)
+    if not runtime_task.exists():
+        return
+
+    # override task source for core
+    task_file = str(runtime_task)
+
+    
     try:
         # --- load + validate config (gate) ---
-        task_file = os.getenv("TASK_FILE", "config/task.yaml")
         config_path = Path(task_file).resolve()
 
         raw_cfg = _load_yaml(config_path)
