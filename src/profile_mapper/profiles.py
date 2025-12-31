@@ -23,7 +23,8 @@ def load_profile(human_input: Dict[str, Any]) -> Dict[str, Any]:
     """
 
     profile_name = _extract_profile_name(human_input)
-    profile_path = Path("profiles") / f"{profile_name}.yaml"
+    BASE_PROFILES_DIR = Path(__file__).parent / "profiles"
+    profile_path = BASE_PROFILES_DIR / f"{profile_name}.yaml"
 
     if not profile_path.exists():
         raise ProfileLoadError(f"Profile not found: {profile_name}")
