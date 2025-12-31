@@ -119,7 +119,6 @@ def main() -> None:
     
     try:
         # --- load + validate config (gate) ---
-        task_file = os.getenv("TASK_FILE", task_file)
         config_path = Path(task_file).resolve()
 
         raw_cfg = _load_yaml(config_path)
