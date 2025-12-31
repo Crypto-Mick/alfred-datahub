@@ -1,6 +1,5 @@
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-import os
 import yaml
 
 from src.extractor import extract
@@ -26,7 +25,11 @@ def _load_yaml(path: Path) -> dict:
     return data
 
 
-def _collect_items_from_sources(sources: list, since: datetime, lookback_hours: int) -> list:
+def _collect_items_from_sources(
+    sources: list,
+    since: datetime,
+    lookback_hours: int,
+) -> list:
     """
     v1 contract:
       sources: list of blocks
@@ -52,7 +55,6 @@ def _collect_items_from_sources(sources: list, since: datetime, lookback_hours: 
 
         # --- web ---
         if stype == "web":
-            # v1: sites are strings (URLs). Reader decides RSS/HTML internally.
             for site in src["sites"]:
                 site_items = read_site_items(
                     site=site,
@@ -67,12 +69,7 @@ def _collect_items_from_sources(sources: list, since: datetime, lookback_hours: 
             dataset = src["dataset"]
             server = src.get("server", "west")
 
-            # v1: api is profile-driven. We dispatch by provider+dataset.
-            # Albion snapshot v1: provider=albion, dataset=market_snapshot
             if provider == "albion" and dataset == "market_snapshot":
-                # NOTE: This assumes api_reader has been updated to accept the v1 shape.
-                # If it is still legacy (expects item_ids), it will raise TypeError/KeyError,
-                # which is correct until we migrate api_reader.
                 api_items = read_price_snapshots(
                     server=server,
                     items=src.get("items", {}),
@@ -81,9 +78,10 @@ def _collect_items_from_sources(sources: list, since: datetime, lookback_hours: 
                 items.extend(api_items)
                 continue
 
-            raise RuntimeError(f"Unsupported API source: provider={provider}, dataset={dataset}")
+            raise RuntimeError(
+                f"Unsupported API source: provider={provider}, dataset={dataset}"
+            )
 
-        # If validation_v1 is correct, we should never get here.
         raise RuntimeError(f"Unsupported source type: {stype}")
 
     return items
@@ -92,7 +90,7 @@ def _collect_items_from_sources(sources: list, since: datetime, lookback_hours: 
 def main() -> None:
     started_at = None
     result_path = "output/result.md"
-    
+
     # --- preflight: profile mapper gate ---
     runtime_input = Path("runtime/input/input.json")
     runtime_mapper_dir = Path("runtime/mapper")
@@ -111,12 +109,16 @@ def main() -> None:
 
     # mapper decided to stop the run (denied / error)
     if not runtime_task.exists():
+        from src.human_output.summary import emit_denied_summary
+        emit_denied_summary(
+            mapper_report_path="runtime/mapper/mapper_report.json",
+            output_dir="runtime/output",
+        )
         return
 
     # override task source for core
     task_file = str(runtime_task)
 
-    
     try:
         # --- load + validate config (gate) ---
         config_path = Path(task_file).resolve()
