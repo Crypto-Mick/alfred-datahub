@@ -23,6 +23,7 @@ def load_profile(human_input: Dict[str, Any]) -> Dict[str, Any]:
     """
 
     profile_name = _extract_profile_name(human_input)
+
     BASE_PROFILES_DIR = Path(__file__).parent / "profiles"
     profile_path = BASE_PROFILES_DIR / f"{profile_name}.yaml"
 
@@ -110,3 +111,4 @@ def _validate_profile_minimal(profile: Dict[str, Any]) -> None:
     # version sanity
     if profile["version"] <= 0:
         raise ProfileLoadError("profile.version must be positive integer")
+

@@ -1,0 +1,25 @@
+name: albion_stub
+version: 1
+
+api:
+  provider: albion
+  dataset: market_snapshot
+
+catalog:
+  path: dry_run/catalog/albion_catalog_stub.json
+
+normalization:
+  location_aliases:
+    bridgewatch: Bridgewatch
+
+guardrails:
+  max_item_ids: 5
+  max_request_units: 20
+  on_exceed: trim
+  trim:
+    method: priority_item_ids
+    priority_item_ids:
+      - T4_BAG
+      - T5_BAG
+      - T6_BAG
+
