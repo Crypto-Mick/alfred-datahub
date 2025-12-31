@@ -50,3 +50,51 @@ def emit_denied_summary(
         lines.append(f"- Reason: {guardrails.get('reason')}\n")
 
     summary_path.write_text("\n".join(lines), encoding="utf-8")
+def emit_success_summary(
+    result_md_path: str = "output/result.md",
+    mapper_report_path: str = "runtime/mapper/mapper_report.json",
+    output_dir: str = "runtime/output",
+) -> None:
+    """
+    Writes human-readable summary.md for ok / trimmed runs.
+    Pure output. No decisions.
+    """
+    out_dir = Path(output_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    summary_path = out_dir / "summary.md"
+
+    status = "ok"
+    note = None
+
+    report_path = Path(mapper_report_path)
+    if report_path.exists():
+        with report_path.open("r", encoding="utf-8") as f:
+            report = json.load(f)
+        status = report.get("status", status)
+        if status == "trimmed":
+            note = "⚠️ Request was trimmed by profile guardrails."
+
+    result_path = Path(result_md_path)
+    if not result_path.exists():
+        summary_path.write_text(
+            "# Alfred run result\n\n"
+            "Run completed, but result.md was not found.\n",
+            encoding="utf-8",
+        )
+        return
+
+    result_text = result_path.read_text(encoding="utf-8")
+
+    lines = []
+    lines.append("# Alfred run result\n")
+    lines.append(f"**Status:** {status}\n")
+    lines.append(f"**Time:** {datetime.now(timezone.utc).isoformat()}\n")
+
+    if note:
+        lines.append(f"\n{note}\n")
+
+    lines.append("\n---\n\n")
+    lines.append(result_text)
+
+    summary_path.write_text("\n".join(lines), encoding="utf-8")
