@@ -180,6 +180,13 @@ def main() -> None:
             },
             result_path=result_path,
         )
+        from src.human_output.summary import emit_success_summary
+
+        emit_success_summary(
+            result_md_path="output/result.md",
+            mapper_report_path="runtime/mapper/mapper_report.json",
+            output_dir="runtime/output",
+        )
 
     except TaskYamlError as e:
         mark_error(
