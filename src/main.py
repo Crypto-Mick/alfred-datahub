@@ -126,6 +126,18 @@ def main() -> None:
 
         raw_cfg = _load_yaml(config_path)
         cfg = validate_task_yaml_v1(raw_cfg)
+        # --- load minimal catalog (v1) ---
+        catalog_path = Path("data/albion/catalog.json")
+        if not catalog_path.exists():
+            raise RuntimeError(f"Catalog not found: {catalog_path}")
+
+        with catalog_path.open("r", encoding="utf-8") as f:
+            catalog = yaml.safe_load(f)
+
+        item_ids = catalog.get("items", [])
+        if not item_ids:
+            raise RuntimeError("Catalog items list is empty")
+
 
         # --- unpack common config (v1) ---
         keywords = cfg["keywords"]
