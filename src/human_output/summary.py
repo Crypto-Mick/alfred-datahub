@@ -8,7 +8,7 @@ def emit_denied_summary(
     output_dir: str = "runtime/output",
 ) -> None:
     """
-    Writes human-readable summary.md for denied / error runs.
+    Writes human-readable summary.md for denied runs.
     Pure output. No decisions.
     """
     out_dir = Path(output_dir)
@@ -35,7 +35,6 @@ def emit_denied_summary(
     lines.append(f"**Status:** {status}\n")
     lines.append(f"**Time:** {datetime.now(timezone.utc).isoformat()}\n")
 
-    # human-facing message
     errors = report.get("errors") or []
     if errors:
         err = errors[0]
@@ -50,6 +49,8 @@ def emit_denied_summary(
         lines.append(f"- Reason: {guardrails.get('reason')}\n")
 
     summary_path.write_text("\n".join(lines), encoding="utf-8")
+
+
 def emit_success_summary(
     result_md_path: str = "output/result.md",
     mapper_report_path: str = "runtime/mapper/mapper_report.json",
@@ -96,5 +97,43 @@ def emit_success_summary(
 
     lines.append("\n---\n\n")
     lines.append(result_text)
+
+    summary_path.write_text("\n".join(lines), encoding="utf-8")
+
+
+def emit_error_summary(
+    error: Exception,
+    mapper_report_path: str = "runtime/mapper/mapper_report.json",
+    output_dir: str = "runtime/output",
+) -> None:
+    """
+    Writes human-readable summary.md for unexpected error runs.
+    Must never raise.
+    """
+    out_dir = Path(output_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    summary_path = out_dir / "summary.md"
+
+    lines = []
+    lines.append("# Alfred run result\n")
+    lines.append("**Status:** error\n")
+    lines.append(f"**Time:** {datetime.now(timezone.utc).isoformat()}\n")
+
+    lines.append("\n## Reason\n")
+    lines.append(str(error) + "\n")
+
+    # Optional mapper diagnostics (best-effort)
+    report_path = Path(mapper_report_path)
+    if report_path.exists():
+        try:
+            with report_path.open("r", encoding="utf-8") as f:
+                report = json.load(f)
+            status = report.get("status")
+            if status:
+                lines.append("\n## Mapper status\n")
+                lines.append(f"- status: {status}\n")
+        except Exception:
+            pass
 
     summary_path.write_text("\n".join(lines), encoding="utf-8")
