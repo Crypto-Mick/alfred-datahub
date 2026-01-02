@@ -147,10 +147,13 @@ def main() -> None:
         max_items = limits.get("max_items")
 
         sources = cfg["sources"]  # v1: list[dict]
-        # --- inject item_ids into api sources (v1 glue) ---
+        # --- inject minimal api context (v1 glue) ---
         for src in sources:
             if src.get("type") == "api":
                 src["items"] = item_ids
+                src.setdefault("locations", ["Caerleon"])
+                src.setdefault("qualities", [1])
+
 
 
         # --- mark running ---
