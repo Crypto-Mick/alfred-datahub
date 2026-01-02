@@ -72,8 +72,9 @@ def _collect_items_from_sources(
             if provider == "albion" and dataset == "market_snapshot":
                 api_items = read_price_snapshots(
                     server=server,
-                    items=src.get("items", {}),
+                    item_ids=src.get("items", []),
                     locations=src.get("locations", []),
+                    qualities=src.get("qualities", []),
                 )
                 items.extend(api_items)
                 continue
