@@ -207,7 +207,13 @@ def main() -> None:
             error=str(e),
             result_path=result_path,
         )
+        from src.human_output.summary import emit_error_summary
 
+        emit_error_summary(
+            error=e,
+            mapper_report_path="runtime/mapper/mapper_report.json",
+            output_dir="runtime/output",
+        )
 
 if __name__ == "__main__":
     main()
