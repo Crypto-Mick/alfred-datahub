@@ -43,7 +43,9 @@ def run(input_path: str, output_dir: str) -> None:
             )
 
         elif intent_type == "stream":
-            raise NotImplementedError("stream intent not implemented yet")
+            from .stream_mapper import run_stream_mapper
+
+            result = run_stream_mapper(human_input)
 
         else:
             raise ValueError(f"Unknown intent_type: {intent_type}")
