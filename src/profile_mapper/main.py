@@ -23,23 +23,30 @@ def run(input_path: str, output_dir: str) -> None:
 
     try:
         human_input = read_input(input_path)
-        intent_type = input_data.get("intent_type", "catalog")
-        profile = load_profile(human_input)
+        intent_type = human_input.get("intent_type", "catalog")
 
-        # API profiles require catalog, event profiles do not
-        if profile.get("type") == "event":
-            catalog = None
+        if intent_type == "catalog":
+            profile = load_profile(human_input)
+
+            # API profiles require catalog, event profiles do not
+            if profile.get("type") == "event":
+                catalog = None
+            else:
+                catalog = load_catalog(profile)
+
+            normalized = normalize_input(human_input, profile)
+
+            result = apply_guardrails(
+                normalized=normalized,
+                profile=profile,
+                catalog=catalog,
+            )
+
+        elif intent_type == "stream":
+            raise NotImplementedError("stream intent not implemented yet")
+
         else:
-            catalog = load_catalog(profile)
-
-        normalized = normalize_input(human_input, profile)
-
-        result = apply_guardrails(
-            normalized=normalized,
-            profile=profile,
-            catalog=catalog,
-        )
-
+            raise ValueError(f"Unknown intent_type: {intent_type}")
 
     except Exception as exc:
         # last-resort safety net: mapper itself failed
@@ -55,6 +62,7 @@ def run(input_path: str, output_dir: str) -> None:
 
     if result.status in ("ok", "trimmed") and result.task_yaml:
         write_task_yaml(out_dir, result.task_yaml)
+
 
 if __name__ == "__main__":
     import sys
