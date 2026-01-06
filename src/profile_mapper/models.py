@@ -79,9 +79,9 @@ class MapperResult:
     guardrails: Optional[GuardrailInfo]
     task_yaml: Optional[Dict[str, Any]]    # declarative v1; None if denied/error
 
-    summary_md: Optional[str] = None
-
     outputs: OutputsInfo
+    
+    summary_md: Optional[str] = None
     warnings: List[str] = field(default_factory=list)
     errors: List[Dict[str, Any]] = field(default_factory=list)
 
