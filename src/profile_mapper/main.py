@@ -24,7 +24,13 @@ def run(input_path: str, output_dir: str) -> None:
     try:
         human_input = read_input(input_path)
         profile = load_profile(human_input)
-        catalog = load_catalog(profile)
+
+        # API profiles require catalog, event profiles do not
+        if profile.get("type") == "event":
+            catalog = None
+        else:
+            catalog = load_catalog(profile)
+
         normalized = normalize_input(human_input, profile)
 
         result = apply_guardrails(
@@ -32,6 +38,7 @@ def run(input_path: str, output_dir: str) -> None:
             profile=profile,
             catalog=catalog,
         )
+
 
     except Exception as exc:
         # last-resort safety net: mapper itself failed
