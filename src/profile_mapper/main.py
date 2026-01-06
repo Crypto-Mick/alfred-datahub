@@ -23,6 +23,7 @@ def run(input_path: str, output_dir: str) -> None:
 
     try:
         human_input = read_input(input_path)
+        intent_type = input_data.get("intent_type", "catalog")
         profile = load_profile(human_input)
 
         # API profiles require catalog, event profiles do not
