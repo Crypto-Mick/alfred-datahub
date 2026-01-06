@@ -3,7 +3,7 @@ version: 1
 type: event
 
 catalog:
-  path: null
+  path: "__event__"
 
 description: >
   Text-based event profile for Telegram and Web sources.
