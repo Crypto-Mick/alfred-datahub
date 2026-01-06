@@ -1,0 +1,30 @@
+profile: event_text_v1
+type: event
+
+description: >
+  Text-based event profile for Telegram and Web sources.
+  Used for keyword-driven monitoring and situational awareness.
+
+sources:
+  - type: telegram
+    fields:
+      - channels
+  - type: web
+    fields:
+      - sites
+
+input:
+  required:
+    - keywords
+  optional:
+    - lookback_hours
+    - max_items
+
+limits:
+  max_channels: 50
+  max_sites: 50
+  max_keywords: 20
+
+defaults:
+  lookback_hours: 72
+  max_items: 20
