@@ -22,7 +22,23 @@ def load_profile(human_input: Dict[str, Any]) -> Dict[str, Any]:
     - attach ProfileInfo into profile meta
     """
 
-    profile_name = _extract_profile_name(human_input)
+    # 1. Explicit profile always wins
+    profile_name = human_input.get("profile")
+
+    # 2. Auto-detect event profile from input structure
+    if not profile_name:
+        sources = human_input.get("sources", {})
+        if (
+        "telegram" in sources and sources["telegram"].get("channels")
+        ) or (
+        "web" in sources and sources["web"].get("sites")
+        ):
+        profile_name = "event_text_v1"
+
+    # 3. Fallback to legacy extraction (API default)
+    if not profile_name:
+        profile_name = _extract_profile_name(human_input)
+
 
     BASE_PROFILES_DIR = Path(__file__).parent / "profiles"
     profile_path = BASE_PROFILES_DIR / f"{profile_name}.yaml"
