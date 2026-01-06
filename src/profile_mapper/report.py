@@ -8,11 +8,15 @@ def build_report(result: MapperResult) -> Dict[str, Any]:
         "version": 1,
         "status": result.status,
         "input_summary": result.input_summary,
-        "profile": {
-            "name": result.profile.name,
-            "version": result.profile.version,
-            "hash": result.profile.hash,
-        },
+        "profile": (
+            {
+                "name": result.profile.name,
+                "version": result.profile.version,
+                "hash": result.profile.hash,
+            }
+            if result.profile is not None
+            else None
+        ),
         "outputs": {
             "generated_task_path": result.outputs.generated_task_path,
             "report_path": result.outputs.report_path,
