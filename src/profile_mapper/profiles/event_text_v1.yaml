@@ -2,6 +2,9 @@ name: event_text_v1
 version: 1
 type: event
 
+catalog:
+  path: null
+
 description: >
   Text-based event profile for Telegram and Web sources.
 
