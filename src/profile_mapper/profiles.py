@@ -29,11 +29,11 @@ def load_profile(human_input: Dict[str, Any]) -> Dict[str, Any]:
     if not profile_name:
         sources = human_input.get("sources", {})
         if (
-        "telegram" in sources and sources["telegram"].get("channels")
+            "telegram" in sources and sources["telegram"].get("channels")
         ) or (
-        "web" in sources and sources["web"].get("sites")
+            "web" in sources and sources["web"].get("sites")
         ):
-        profile_name = "event_text_v1"
+            profile_name = "event_text_v1"
 
     # 3. Fallback to legacy extraction (API default)
     if not profile_name:
