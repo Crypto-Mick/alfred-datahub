@@ -13,9 +13,10 @@ class ProfileLoadError(Exception):
 
 def load_profile(human_input: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Load API profile specified in human input.
+    Load profile specified in human input.
+
     Responsibilities:
-    - find profile name in input.json
+    - determine profile name
     - load profile YAML from profiles/
     - compute profile_hash
     - perform minimal structural validation
@@ -29,16 +30,17 @@ def load_profile(human_input: Dict[str, Any]) -> Dict[str, Any]:
     if not profile_name:
         sources = human_input.get("sources", {})
         if (
-            "telegram" in sources and sources["telegram"].get("channels")
-        ) or (
-            "web" in sources and sources["web"].get("sites")
+            isinstance(sources, dict)
+            and (
+                ("telegram" in sources and sources["telegram"].get("channels"))
+                or ("web" in sources and sources["web"].get("sites"))
+            )
         ):
             profile_name = "event_text_v1"
 
     # 3. Fallback to legacy extraction (API default)
     if not profile_name:
         profile_name = _extract_profile_name(human_input)
-
 
     BASE_PROFILES_DIR = Path(__file__).parent / "profiles"
     profile_path = BASE_PROFILES_DIR / f"{profile_name}.yaml"
@@ -95,36 +97,42 @@ def _extract_profile_name(human_input: Dict[str, Any]) -> str:
 def _validate_profile_minimal(profile: Dict[str, Any]) -> None:
     """
     Minimal structural validation.
-    We intentionally do NOT validate guardrails logic here.
+    Validation depends on profile type.
     """
 
-    required_fields = {
-        "name": str,
-        "version": int,
-        "api": dict,
-        "catalog": dict,
-    }
+    # Common required fields
+    if "name" not in profile or not isinstance(profile["name"], str):
+        raise ProfileLoadError("Profile field 'name' must be string")
 
-    for key, expected_type in required_fields.items():
-        if key not in profile:
-            raise ProfileLoadError(f"Profile missing required field: {key}")
-        if not isinstance(profile[key], expected_type):
-            raise ProfileLoadError(
-                f"Profile field '{key}' must be {expected_type.__name__}"
-            )
+    if "version" not in profile or not isinstance(profile["version"], int):
+        raise ProfileLoadError("Profile field 'version' must be int")
 
-    # api block (only presence + basic structure)
-    api = profile["api"]
-    for k in ("provider", "dataset"):
-        if k not in api or not isinstance(api[k], str) or not api[k].strip():
-            raise ProfileLoadError(f"profile.api.{k} must be a non-empty string")
-
-    # catalog block (path must exist later; here only structure)
-    catalog = profile["catalog"]
-    if "path" not in catalog or not isinstance(catalog["path"], str):
-        raise ProfileLoadError("profile.catalog.path must be a string")
-
-    # version sanity
     if profile["version"] <= 0:
         raise ProfileLoadError("profile.version must be positive integer")
 
+    profile_type = profile.get("type", "api")
+
+    # --- API profile validation ---
+    if profile_type == "api":
+        if "api" not in profile or not isinstance(profile["api"], dict):
+            raise ProfileLoadError("Profile missing required field: api")
+
+        api = profile["api"]
+        for k in ("provider", "dataset"):
+            if k not in api or not isinstance(api[k], str) or not api[k].strip():
+                raise ProfileLoadError(f"profile.api.{k} must be a non-empty string")
+
+        if "catalog" not in profile or not isinstance(profile["catalog"], dict):
+            raise ProfileLoadError("Profile missing required field: catalog")
+
+        catalog = profile["catalog"]
+        if "path" not in catalog or not isinstance(catalog["path"], str):
+            raise ProfileLoadError("profile.catalog.path must be a string")
+
+    # --- Event profile validation ---
+    elif profile_type == "event":
+        if "sources" not in profile or not isinstance(profile["sources"], list):
+            raise ProfileLoadError("Event profile must define sources list")
+
+    else:
+        raise ProfileLoadError(f"Unknown profile type: {profile_type}")
