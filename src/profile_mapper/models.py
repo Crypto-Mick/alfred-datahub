@@ -188,3 +188,7 @@ class MapperResult:
                 "message": message,
             }],
         )
+        
+from typing import Literal
+ 
+IntentType = Literal["catalog", "stream"]
