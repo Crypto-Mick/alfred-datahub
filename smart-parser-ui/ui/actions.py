@@ -37,8 +37,8 @@ def run_parser() -> None:
     """
     Run smart-parser via shell script.
     """
-    sp_root = _smart_parser_root()
-    script_path = sp_root.parent / "smart-parser-ui" / "scripts" / "run_parser.sh"
+    ui_root = Path(__file__).resolve().parents[1]
+    script_path = ui_root / "scripts" / "run_parser.sh"
 
     subprocess.run(
         [str(script_path)],
