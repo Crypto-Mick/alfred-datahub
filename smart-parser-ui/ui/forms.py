@@ -14,8 +14,17 @@ def _parse_csv(value: str) -> list[str]:
 
 
 def render_telegram_form() -> dict:
-    channels = st.text_input("Channels (comma-separated)")
-    keywords = st.text_input("Keywords (comma-separated)", help="Required")
+    channels = st.text_input(
+        "Channels (comma-separated)",
+        key="tg_channels",
+    )
+
+    keywords = st.text_input(
+        "Keywords (comma-separated)",
+        help="Required",
+        key="tg_keywords",
+    )
+
     lookback_label = st.selectbox("Lookback", list(LOOKBACK_OPTIONS.keys()))
     max_items = st.number_input("Max items", min_value=1, value=20, step=1)
 
@@ -35,8 +44,17 @@ def render_telegram_form() -> dict:
 
 
 def render_web_form() -> dict:
-    sites = st.text_area("Sites/RSS (one per line)")
-    keywords = st.text_input("Keywords (comma-separated)", help="Required")
+    sites = st.text_area(
+        "Sites/RSS (one per line)",
+        key="web_sites",
+    )
+
+    keywords = st.text_input(
+        "Keywords (comma-separated)",
+        help="Required",
+        key="web_keywords",
+    )
+
     lookback_label = st.selectbox("Lookback", list(LOOKBACK_OPTIONS.keys()))
     max_items = st.number_input("Max items", min_value=1, value=20, step=1)
 
