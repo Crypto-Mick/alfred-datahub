@@ -70,6 +70,7 @@ def open_summary() -> Optional[str]:
     return None
 
 
+
 def show_status() -> Optional[dict]:
     """
     Read runtime/output/mapper_report.json from smart-parser.
