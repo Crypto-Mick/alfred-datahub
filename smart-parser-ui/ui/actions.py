@@ -15,7 +15,7 @@ def _smart_parser_root() -> Path:
         └── ui/
             └── actions.py
     """
-    return Path(__file__).resolve().parents[2] / "smart-parser"
+    return Path(__file__).resolve().parents[2]
 
 
 def write_input_json(data: dict) -> Path:
