@@ -48,22 +48,24 @@ def run_parser() -> None:
 
 def open_summary() -> Optional[str]:
     """
-    Read summary.md produced by smart-parser.
+    Read result produced by smart-parser.
 
     Priority:
-    1. output/summary.md        (successful run)
-    2. runtime/output/summary.md (denied / error)
+    1. output/result.md          (successful run)
+    2. output/summary.md         (legacy / future)
+    3. runtime/output/summary.md (denied / error)
     """
     sp_root = _smart_parser_root()
 
-    primary = sp_root / "output" / "summary.md"
-    fallback = sp_root / "runtime" / "output" / "summary.md"
+    candidates = [
+        sp_root / "output" / "result.md",
+        sp_root / "output" / "summary.md",
+        sp_root / "runtime" / "output" / "summary.md",
+    ]
 
-    if primary.exists():
-        return primary.read_text(encoding="utf-8")
-
-    if fallback.exists():
-        return fallback.read_text(encoding="utf-8")
+    for path in candidates:
+        if path.exists():
+            return path.read_text(encoding="utf-8")
 
     return None
 
