@@ -1,3 +1,4 @@
+# ui/actions.py
 import json
 import subprocess
 from pathlib import Path
@@ -9,18 +10,24 @@ def _smart_parser_root() -> Path:
     Resolve path to smart-parser directory.
 
     Expected layout:
-    /home/micklib/
-    ├── smart-parser/
+    smart-parser/
+    ├── runtime/
+    ├── src/
     └── smart-parser-ui/
         └── ui/
             └── actions.py
     """
+    # actions.py is at: smart-parser/smart-parser-ui/ui/actions.py
     return Path(__file__).resolve().parents[2]
 
 
 def write_input_json(data: dict) -> Path:
     """
     Write runtime/input/input.json for smart-parser.
+
+    UI contract:
+    - UI writes ONLY runtime/input/input.json (human intent).
+    - UI does NOT write mapper artifacts or core output.
     """
     sp_root = _smart_parser_root()
     input_path = sp_root / "runtime" / "input" / "input.json"
@@ -36,13 +43,18 @@ def write_input_json(data: dict) -> Path:
 def run_parser() -> None:
     """
     Run smart-parser via shell script.
+
+    UI invariant:
+    - UI launches a single command.
+    - No core imports.
     """
-    ui_root = Path(__file__).resolve().parents[1]
-    script_path = ui_root / "scripts" / "run_parser.sh"
+    sp_root = _smart_parser_root()
+    script_path = sp_root / "smart-parser-ui" / "scripts" / "run_parser.sh"
 
     subprocess.run(
         [str(script_path)],
         check=True,
+        cwd=str(sp_root),
     )
 
 
@@ -50,35 +62,25 @@ def open_summary() -> Optional[str]:
     """
     Read result produced by smart-parser.
 
-    Priority:
-    1. output/result.md          (successful run)
-    2. output/summary.md         (legacy / future)
-    3. runtime/output/summary.md (denied / error)
+    Contract v1:
+    - Core writes runtime/output/summary.md ALWAYS (success or error).
     """
     sp_root = _smart_parser_root()
-
-    candidates = [
-        sp_root / "output" / "result.md",
-        sp_root / "output" / "summary.md",
-        sp_root / "runtime" / "output" / "summary.md",
-    ]
-
-    for path in candidates:
-        if path.exists():
-            return path.read_text(encoding="utf-8")
-
-    return None
-
+    path = sp_root / "runtime" / "output" / "summary.md"
+    if not path.exists():
+        return None
+    return path.read_text(encoding="utf-8")
 
 
 def show_status() -> Optional[dict]:
     """
-    Read runtime/output/mapper_report.json from smart-parser.
+    Read mapper report produced by Profile Mapper v1.
+
+    Contract v1:
+    - Mapper writes runtime/mapper/mapper_report.json (always, even denied).
     """
     sp_root = _smart_parser_root()
-    report_path = sp_root / "runtime" / "output" / "mapper_report.json"
-
+    report_path = sp_root / "runtime" / "mapper" / "mapper_report.json"
     if not report_path.exists():
         return None
-
     return json.loads(report_path.read_text(encoding="utf-8"))
