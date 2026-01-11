@@ -1,97 +1,106 @@
+# ui/forms.py
 import streamlit as st
 
-LOOKBACK_OPTIONS = {
-    "6h": 6,
-    "24h": 24,
-    "3 days": 72,
-    "7 days": 168,
-    "3 months": 2160,
+DAY_OPTIONS = {
+    "1 day": 1,
+    "3 days": 3,
+    "7 days": 7,
+    "30 days": 30,
+    "90 days": 90,
 }
 
 
 def _parse_csv(value: str) -> list[str]:
-    return [item.strip() for item in value.split(",") if item.strip()]
+    # split by comma, trim, drop empties, dedup (preserve order)
+    items: list[str] = []
+    seen = set()
+    for raw in value.split(","):
+        item = raw.strip()
+        if not item:
+            continue
+        key = item.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        items.append(item)
+    return items
+
+
+def _parse_lines(value: str) -> list[str]:
+    # one per line, trim, drop empties, dedup (preserve order)
+    items: list[str] = []
+    seen = set()
+    for raw in value.splitlines():
+        item = raw.strip()
+        if not item:
+            continue
+        key = item.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        items.append(item)
+    return items
 
 
 def render_telegram_form() -> dict:
-    channels = st.text_input(
+    channels_raw = st.text_input(
         "Channels (comma-separated)",
+        help='Example: cryptokogan, @some_channel, https://t.me/some_channel',
         key="tg_channels",
     )
 
-    keywords = st.text_input(
+    keywords_raw = st.text_input(
         "Keywords (comma-separated)",
-        help="Required",
+        help="Required. Case-insensitive match in text.",
         key="tg_keywords",
     )
 
-    lookback_label = st.selectbox(
-        "Lookback",
-        list(LOOKBACK_OPTIONS.keys()),
-        key="tg_lookback",
+    days_label = st.selectbox(
+        "Lookback (days)",
+        list(DAY_OPTIONS.keys()),
+        index=0,
+        key="tg_days",
     )
 
-    max_items = st.number_input(
-        "Max items",
-        min_value=1,
-        value=20,
-        step=1,
-        key="tg_max_items",
-    )
+    channels = _parse_csv(channels_raw)
+    keywords = _parse_csv(keywords_raw)
+    days = int(DAY_OPTIONS[days_label])
 
+    # event_text_v1 human-input контракт:
+    # top-level: keywords + telegram/web + days (optional)
     return {
-        "sources": {
-            "telegram": {
-                "channels": _parse_csv(channels),
-            },
-            "web": {
-                "sites": [],
-            },
-        },
-        "keywords": _parse_csv(keywords),
-        "lookback_hours": LOOKBACK_OPTIONS[lookback_label],
-        "max_items": int(max_items),
+        "keywords": keywords,
+        "telegram": {"channels": channels},
+        "days": days,
     }
 
 
 def render_web_form() -> dict:
-    sites = st.text_area(
-        "Sites/RSS (one per line)",
-        key="web_sites",
+    urls_raw = st.text_area(
+        "URLs / RSS (one per line)",
+        help="Example: https://example.com/rss.xml",
+        key="web_urls",
     )
 
-    keywords = st.text_input(
+    keywords_raw = st.text_input(
         "Keywords (comma-separated)",
-        help="Required",
+        help="Required. Case-insensitive match in text.",
         key="web_keywords",
     )
 
-    lookback_label = st.selectbox(
-        "Lookback",
-        list(LOOKBACK_OPTIONS.keys()),
-        key="web_lookback",
+    days_label = st.selectbox(
+        "Lookback (days)",
+        list(DAY_OPTIONS.keys()),
+        index=0,
+        key="web_days",
     )
 
-    max_items = st.number_input(
-        "Max items",
-        min_value=1,
-        value=20,
-        step=1,
-        key="web_max_items",
-    )
-
-    sites_list = [line.strip() for line in sites.splitlines() if line.strip()]
+    urls = _parse_lines(urls_raw)
+    keywords = _parse_csv(keywords_raw)
+    days = int(DAY_OPTIONS[days_label])
 
     return {
-        "sources": {
-            "telegram": {
-                "channels": [],
-            },
-            "web": {
-                "sites": sites_list,
-            },
-        },
-        "keywords": _parse_csv(keywords),
-        "lookback_hours": LOOKBACK_OPTIONS[lookback_label],
-        "max_items": int(max_items),
+        "keywords": keywords,
+        "web": {"urls": urls},
+        "days": days,
     }
