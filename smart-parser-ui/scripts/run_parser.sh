@@ -1,12 +1,16 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Resolve directories
+# Directory of this script: smart-parser/smart-parser-ui/scripts
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-UI_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
-SP_ROOT="$(cd "${UI_ROOT}/../smart-parser" && pwd)"
 
-# Use smart-parser's own venv
+# UI root: smart-parser/smart-parser-ui
+UI_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+
+# smart-parser root: parent of UI
+SP_ROOT="$(cd "${UI_ROOT}/.." && pwd)"
+
+# Python from smart-parser venv
 PYTHON="${SP_ROOT}/.venv/bin/python"
 
 if [ ! -x "$PYTHON" ]; then
