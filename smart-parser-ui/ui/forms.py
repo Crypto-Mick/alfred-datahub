@@ -31,7 +31,13 @@ def render_telegram_form() -> dict:
         key="tg_lookback",
     )
 
-    max_items = st.number_input("Max items", min_value=1, value=20, step=1)
+    max_items = st.number_input(
+        "Max items",
+        min_value=1,
+        value=20,
+        step=1,
+        key="tg_max_items",
+    )
 
     return {
         "sources": {
@@ -66,7 +72,13 @@ def render_web_form() -> dict:
         key="web_lookback",
     )
 
-    max_items = st.number_input("Max items", min_value=1, value=20, step=1)
+    max_items = st.number_input(
+        "Max items",
+        min_value=1,
+        value=20,
+        step=1,
+        key="web_max_items",
+    )
 
     sites_list = [line.strip() for line in sites.splitlines() if line.strip()]
 
